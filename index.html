@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galería de Fotos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Galería de Fotos <strong>BETA</strong> </h1>
+    <div class="gallery">
+        <img src="1.jpg" onclick="openModal(this.src)">
+        <img src="https://source.unsplash.com/random/200x150?sig=2" onclick="openModal(this.src)">
+        <img src="https://source.unsplash.com/random/200x150?sig=3" onclick="openModal(this.src)">
+        <img src="https://source.unsplash.com/random/200x150?sig=4" onclick="openModal(this.src)">
+        <img src="https://source.unsplash.com/random/200x150?sig=5" onclick="openModal(this.src)">
+    </div>
+    <div class="modal" id="modal" onclick="closeModal()">
+        <img id="modal-img">
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

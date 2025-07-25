@@ -3,21 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galería de Fotos</title>
+    <title>Picture.Fotography</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <h1>Galería de Fotos <strong>BETA</strong> </h1>
-    <div class="gallery">
-        <img src="1.jpg" onclick="openModal(this.src)">
-        <img src="https://source.unsplash.com/random/200x150?sig=2" onclick="openModal(this.src)">
-        <img src="https://source.unsplash.com/random/200x150?sig=3" onclick="openModal(this.src)">
-        <img src="https://source.unsplash.com/random/200x150?sig=4" onclick="openModal(this.src)">
-        <img src="https://source.unsplash.com/random/200x150?sig=5" onclick="openModal(this.src)">
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-camera"></i> Picture.Fotography</h1>
+            <p>Disfruta de mis mejores momentos capturados</p>
+        </header>
+
+        <!-- Slider automático -->
+        <div class="hero-slider">
+            <div class="slider-container">
+                <div class="slider-track" id="slider-track">
+                    <!-- Las imágenes del slider se cargarán dinámicamente -->
+                </div>
+            </div>
+            <div class="slider-controls">
+                <button class="slider-btn prev-slider" id="prev-slider">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="slider-dots" id="slider-dots">
+                    <!-- Los puntos indicadores se generarán dinámicamente -->
+                </div>
+                <button class="slider-btn next-slider" id="next-slider">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="gallery-controls">
+                        <button class="filter-btn active" data-filter="all">
+                <i class="fas fa-th"></i> Todas
+            </button>
+            <button class="filter-btn" data-filter="vertical">
+                <i class="fas fa-arrows-alt-v"></i> Verticales
+            </button>
+            <button class="filter-btn" data-filter="horizontal">
+                <i class="fas fa-arrows-alt-h"></i> Horizontales
+            </button>
+        </div>
+
+        <div class="gallery" id="gallery">
+            <!-- Las imágenes se cargarán dinámicamente con JavaScript -->
+        </div>
     </div>
-    <div class="modal" id="modal" onclick="closeModal()">
-        <img id="modal-img">
+
+    <!-- Modal para vista ampliada -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <img class="modal-image" id="modal-image" src="" alt="">
+            <div class="modal-nav">
+                <button class="nav-btn prev" id="prev-btn">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="nav-btn next" id="next-btn">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>

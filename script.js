@@ -1,19 +1,56 @@
 // Configuración de la galería
 const galleryConfig = {
     images: [
-        { src: 'assets/2.jpeg', alt: 'Fotografía 2' },
-        { src: 'assets/4.jpeg', alt: 'Fotografía 4' },
-        { src: 'assets/5.jpeg', alt: 'Fotografía 5' },
-        { src: 'assets/7.jpeg', alt: 'Fotografía 7' },
-        { src: 'assets/8.jpeg', alt: 'Fotografía 8' },
-        { src: 'assets/9.jpeg', alt: 'Fotografía 9' },
-        { src: 'assets/10.jpeg', alt: 'Fotografía 10' },
-        { src: 'assets/11.jpeg', alt: 'Fotografía 11' },
-        { src: 'assets/12.jpeg', alt: 'Fotografía 12' },
-        { src: 'assets/ver.jpg', alt: 'Fotografía 13' },
-        { src: 'assets/20240108_055800-01.jpeg', alt: 'Fotografía 20240108' },
-        { src: 'assets/20240314_172343-01.jpeg', alt: 'Fotografía 20240314' },
-        { src: 'assets/IMG_20240504_115006_HDR-01.jpeg', alt: 'Fotografía HDR' }
+        { 
+            src: 'assets/1.jpeg', 
+            alt: 'Fotografía 1',
+            originalSrc: '/Originales/1.jpeg' // URL de imagen original
+        },
+        { 
+            src: 'assets/2.jpeg', 
+            alt: 'Fotografía 2',
+            originalSrc: '/Originales/2.jpeg'
+        },
+        { 
+            src: 'assets/3.jpeg', 
+            alt: 'Fotografía 3',
+            originalSrc: '/Originales/3.jpeg'
+        },
+        { 
+            src: 'assets/4.jpeg', 
+            alt: 'Fotografía 4',
+            originalSrc: '/Originales/4.jpeg'
+        },
+        {   
+            src: 'assets/5.jpeg', 
+            alt: 'Fotografía 5',
+            originalSrc: '/Originales/5.jpeg'
+        },
+        { 
+            src: 'assets/6.jpeg', 
+            alt: 'Fotografía 6',
+            originalSrc: '/Originales/6.jpeg'
+        },
+        { 
+            src: 'assets/7.jpeg', 
+            alt: 'Fotografía 7',
+            originalSrc: '/Originales/7.jpeg'
+        },
+        { 
+            src: 'assets/8.jpeg', 
+            alt: 'Fotografía 8',
+            originalSrc: '/Originales/8.jpeg'
+        },
+        { 
+            src: 'assets/9.jpeg', 
+            alt: 'Fotografía 9',
+            originalSrc: '/Originales/9.jpeg'
+        },
+        { 
+            src: 'assets/10.jpeg', 
+            alt: 'Fotografía 10',
+            originalSrc: '/Originales/10.jpeg'
+        },
     ]
 };
 
@@ -34,6 +71,9 @@ const modalImage = document.getElementById('modal-image');
 const closeBtn = document.querySelector('.close');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
+const downloadBtn = document.getElementById('download-btn');
+const downloadContainer = document.getElementById('download-container');
+const downloadOptions = document.getElementById('download-options');
 const filterBtns = document.querySelectorAll('.filter-btn');
 
 // Elementos del slider
@@ -57,13 +97,38 @@ function detectImageOrientation(img) {
 // Función para crear un elemento de galería
 function createGalleryItem(imageData, orientation) {
     const item = document.createElement('div');
-    item.className = `gallery-item ${orientation}`;
+    item.className = `gallery-item ${orientation} loading`;
     item.dataset.orientation = orientation;
+    
+    // Crear preloader
+    const loader = document.createElement('div');
+    loader.className = 'image-loader';
+    loader.innerHTML = `
+        <div class="spinner"></div>
+        <span>Cargando...</span>
+    `;
     
     const img = document.createElement('img');
     img.src = imageData.src;
     img.alt = imageData.alt;
     img.loading = 'lazy';
+    
+    // Evento para cuando la imagen se carga
+    img.onload = function() {
+        item.classList.remove('loading');
+        loader.style.display = 'none';
+        img.style.opacity = '1';
+    };
+    
+    // Evento para error de carga
+    img.onerror = function() {
+        item.classList.remove('loading');
+        loader.innerHTML = `
+            <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 8px;"></i>
+            <span>Error al cargar</span>
+        `;
+        loader.style.color = '#ff6b6b';
+    };
     
     const overlay = document.createElement('div');
     overlay.className = 'overlay';
@@ -72,6 +137,7 @@ function createGalleryItem(imageData, orientation) {
         <p>${orientation === 'vertical' ? 'Fotografía Vertical' : 'Fotografía Horizontal'}</p>
     `;
     
+    item.appendChild(loader);
     item.appendChild(img);
     item.appendChild(overlay);
     
@@ -87,12 +153,14 @@ function createGalleryItem(imageData, orientation) {
 async function loadGallery() {
     gallery.innerHTML = '';
     
-    // Crear un array de promesas para cargar todas las imágenes
-    const imagePromises = galleryConfig.images.map((imageData, index) => {
+    // Crear elementos de galería inmediatamente con preloaders
+    const galleryItems = galleryConfig.images.map((imageData, index) => {
+        // Crear un elemento temporal para detectar orientación
+        const tempImg = new Image();
+        tempImg.src = imageData.src;
+        
         return new Promise((resolve) => {
-            const img = new Image();
-            
-            img.onload = function() {
+            tempImg.onload = function() {
                 const orientation = this.width > this.height ? 'horizontal' : 'vertical';
                 const item = createGalleryItem(imageData, orientation);
                 
@@ -106,19 +174,17 @@ async function loadGallery() {
                 resolve({ item, index });
             };
             
-            img.onerror = function() {
+            tempImg.onerror = function() {
                 console.warn(`No se pudo cargar la imagen: ${imageData.src}`);
-                resolve(null);
+                // Crear elemento con error
+                const item = createGalleryItem(imageData, 'horizontal');
+                resolve({ item, index });
             };
-            
-            img.src = imageData.src;
         });
     });
     
-    // Esperar a que todas las imágenes se carguen
-    const results = await Promise.all(imagePromises);
-    
-    // Agregar las imágenes a la galería en orden
+    // Agregar elementos a la galería inmediatamente
+    const results = await Promise.all(galleryItems);
     results.forEach(result => {
         if (result && result.item) {
             gallery.appendChild(result.item);
@@ -165,6 +231,9 @@ function openModal(src, alt) {
     modal.style.display = 'block';
     document.body.style.overflow = 'hidden';
     
+    // Cerrar menú de descarga si está abierto
+    closeDownloadMenu();
+    
     // Encontrar el índice de la imagen actual
     const visibleItems = Array.from(gallery.querySelectorAll('.gallery-item'))
         .filter(item => item.style.display !== 'none');
@@ -175,10 +244,105 @@ function openModal(src, alt) {
     updateNavigationButtons();
 }
 
+// Función para alternar el menú de descarga
+function toggleDownloadMenu() {
+    downloadContainer.classList.toggle('active');
+}
+
+// Función para cerrar el menú de descarga
+function closeDownloadMenu() {
+    downloadContainer.classList.remove('active');
+}
+
+// Función para obtener la imagen original
+function getOriginalImageSrc(currentSrc) {
+    const imageData = galleryConfig.images.find(img => img.src === currentSrc);
+    return imageData ? imageData.originalSrc : currentSrc;
+}
+
+// Función para descargar imagen
+function downloadImage(src, alt, quality = 'original') {
+    // Cerrar el menú de descarga
+    closeDownloadMenu();
+    
+    // Mostrar mensaje de descarga
+    const downloadBtn = document.getElementById('download-btn');
+    const originalText = downloadBtn.innerHTML;
+    downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Descargando...';
+    downloadBtn.disabled = true;
+    
+    const link = document.createElement('a');
+    link.download = alt.replace(/\s+/g, '_') + '.jpg';
+    link.target = '_blank';
+    
+    if (quality === 'standard') {
+        // Descarga estándar (directa de la imagen actual)
+        link.href = src;
+        link.click();
+        // Restaurar el botón después de un breve delay
+        setTimeout(() => {
+            downloadBtn.innerHTML = originalText;
+            downloadBtn.disabled = false;
+        }, 500);
+    } else {
+        // Descarga original (usando URL original o imagen en alta calidad)
+        const originalSrc = getOriginalImageSrc(src);
+        
+        // Si la URL original es diferente, usar descarga directa
+        if (originalSrc !== src) {
+            link.href = originalSrc;
+            link.click();
+            setTimeout(() => {
+                downloadBtn.innerHTML = originalText;
+                downloadBtn.disabled = false;
+            }, 500);
+        } else {
+            // Si no hay URL original, usar canvas para alta calidad
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                
+                ctx.drawImage(img, 0, 0);
+                
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    link.href = url;
+                    link.click();
+                    
+                    // Limpiar el URL después de la descarga
+                    setTimeout(() => {
+                        URL.revokeObjectURL(url);
+                        // Restaurar el botón
+                        downloadBtn.innerHTML = originalText;
+                        downloadBtn.disabled = false;
+                    }, 100);
+                }, 'image/jpeg', 0.95);
+            };
+            
+            img.onerror = function() {
+                // Si hay error con CORS, intentar descarga directa
+                link.href = src;
+                link.click();
+                // Restaurar el botón
+                downloadBtn.innerHTML = originalText;
+                downloadBtn.disabled = false;
+            };
+            
+            img.src = src;
+        }
+    }
+}
+
 // Función para cerrar el modal
 function closeModal() {
     modal.style.display = 'none';
     document.body.style.overflow = 'auto';
+    closeDownloadMenu();
 }
 
 // Función para navegar entre imágenes
@@ -197,6 +361,9 @@ function navigateImage(direction) {
     
     modalImage.src = targetImg.src;
     modalImage.alt = targetImg.alt;
+    
+    // Cerrar menú de descarga al navegar
+    closeDownloadMenu();
     
     updateNavigationButtons();
 }
@@ -226,6 +393,18 @@ document.addEventListener('DOMContentLoaded', () => {
     closeBtn.addEventListener('click', closeModal);
     prevBtn.addEventListener('click', () => navigateImage('prev'));
     nextBtn.addEventListener('click', () => navigateImage('next'));
+    
+    // Event listeners para el menú de descarga
+    downloadBtn.addEventListener('click', toggleDownloadMenu);
+    
+    // Event listeners para las opciones de descarga
+    document.querySelectorAll('.download-option').forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const quality = option.dataset.quality;
+            downloadImage(modalImage.src, modalImage.alt, quality);
+        });
+    });
     
     // Event listeners para el slider
     prevSliderBtn.addEventListener('click', () => {
@@ -267,15 +446,22 @@ document.addEventListener('DOMContentLoaded', () => {
             closeModal();
         }
     });
+    
+    // Cerrar menú de descarga al hacer clic fuera
+    document.addEventListener('click', (e) => {
+        if (!downloadContainer.contains(e.target)) {
+            closeDownloadMenu();
+        }
+    });
 });
 
 // Funciones del slider
 function initSlider() {
     // Seleccionar solo las mejores 3 imágenes para el slider (destacadas)
     const featuredImages = [
-        galleryConfig.images[0],  // Primera imagen
-        galleryConfig.images[4],  // Quinta imagen
-        galleryConfig.images[8]   // Novena imagen
+        galleryConfig.images[1],  // Primera imagen
+        galleryConfig.images[3],  // Quinta imagen
+        galleryConfig.images[5]   // Novena imagen
     ];
     sliderImages = featuredImages;
     

@@ -1,713 +1,557 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+// Configuración de la galería
+const galleryConfig = {
+    images: [
+        { 
+            src: 'assets/1.jpeg', 
+            alt: 'Fotografía 1',
+            originalSrc: '/Originales/1.jpeg' // URL de imagen original
+        },
+        { 
+            src: 'assets/2.jpeg', 
+            alt: 'Fotografía 2',
+            originalSrc: '/Originales/2.jpeg'
+        },
+        { 
+            src: 'assets/3.jpeg', 
+            alt: 'Fotografía 3',
+            originalSrc: '/Originales/3.jpeg'
+        },
+        { 
+            src: 'assets/4.jpeg', 
+            alt: 'Fotografía 4',
+            originalSrc: '/Originales/4.jpeg'
+        },
+        {   
+            src: 'assets/5.jpeg', 
+            alt: 'Fotografía 5',
+            originalSrc: '/Originales/5.jpeg'
+        },
+        { 
+            src: 'assets/6.jpeg', 
+            alt: 'Fotografía 6',
+            originalSrc: '/Originales/6.jpeg'
+        },
+        { 
+            src: 'assets/7.jpeg', 
+            alt: 'Fotografía 7',
+            originalSrc: '/Originales/7.jpeg'
+        },
+        { 
+            src: 'assets/8.jpeg', 
+            alt: 'Fotografía 8',
+            originalSrc: '/Originales/8.jpeg'
+        },
+        { 
+            src: 'assets/9.jpeg', 
+            alt: 'Fotografía 9',
+            originalSrc: '/Originales/9.jpeg'
+        },
+        { 
+            src: 'assets/10.jpeg', 
+            alt: 'Fotografía 10',
+            originalSrc: '/Originales/10.jpeg'
+        },
+    ]
+};
+
+// Variables globales
+let currentFilter = 'all';
+let currentImageIndex = 0;
+let filteredImages = [];
+
+// Variables del slider
+let currentSlide = 0;
+let slideInterval;
+let sliderImages = [];
+
+// Elementos del DOM
+const gallery = document.getElementById('gallery');
+const modal = document.getElementById('modal');
+const modalImage = document.getElementById('modal-image');
+const closeBtn = document.querySelector('.close');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const downloadBtn = document.getElementById('download-btn');
+const downloadContainer = document.getElementById('download-container');
+const downloadOptions = document.getElementById('download-options');
+const filterBtns = document.querySelectorAll('.filter-btn');
+
+// Elementos del slider
+const sliderTrack = document.getElementById('slider-track');
+const sliderDots = document.getElementById('slider-dots');
+const prevSliderBtn = document.getElementById('prev-slider');
+const nextSliderBtn = document.getElementById('next-slider');
+
+// Función para detectar la orientación de una imagen
+function detectImageOrientation(img) {
+    return new Promise((resolve) => {
+        const tempImg = new Image();
+        tempImg.onload = function() {
+            const orientation = this.width > this.height ? 'horizontal' : 'vertical';
+            resolve(orientation);
+        };
+        tempImg.src = img.src;
+    });
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    color: #333;
+// Función para crear un elemento de galería
+function createGalleryItem(imageData, orientation) {
+    const item = document.createElement('div');
+    item.className = `gallery-item ${orientation} loading`;
+    item.dataset.orientation = orientation;
+    
+    // Crear preloader
+    const loader = document.createElement('div');
+    loader.className = 'image-loader';
+    loader.innerHTML = `
+        <div class="spinner"></div>
+        <span>Cargando...</span>
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imageData.src;
+    img.alt = imageData.alt;
+    img.loading = 'lazy';
+    
+    // Evento para cuando la imagen se carga
+    img.onload = function() {
+        item.classList.remove('loading');
+        loader.style.display = 'none';
+        img.style.opacity = '1';
+    };
+    
+    // Evento para error de carga
+    img.onerror = function() {
+        item.classList.remove('loading');
+        loader.innerHTML = `
+            <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 8px;"></i>
+            <span>Error al cargar</span>
+        `;
+        loader.style.color = '#ff6b6b';
+    };
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.innerHTML = `
+        <h3>${imageData.alt}</h3>
+        <p>${orientation === 'vertical' ? 'Fotografía Vertical' : 'Fotografía Horizontal'}</p>
+    `;
+    
+    item.appendChild(loader);
+    item.appendChild(img);
+    item.appendChild(overlay);
+    
+    // Evento para abrir el modal
+    item.addEventListener('click', () => {
+        openModal(imageData.src, imageData.alt);
+    });
+    
+    return item;
 }
 
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+// Función para cargar la galería
+async function loadGallery() {
+    gallery.innerHTML = '';
+    
+    // Crear elementos de galería inmediatamente con preloaders
+    const galleryItems = galleryConfig.images.map((imageData, index) => {
+        // Crear un elemento temporal para detectar orientación
+        const tempImg = new Image();
+        tempImg.src = imageData.src;
+        
+        return new Promise((resolve) => {
+            tempImg.onload = function() {
+                const orientation = this.width > this.height ? 'horizontal' : 'vertical';
+                const item = createGalleryItem(imageData, orientation);
+                
+                // Aplicar filtro actual si es necesario
+                if (currentFilter !== 'all') {
+                    if (currentFilter !== orientation) {
+                        item.style.display = 'none';
+                    }
+                }
+                
+                resolve({ item, index });
+            };
+            
+            tempImg.onerror = function() {
+                console.warn(`No se pudo cargar la imagen: ${imageData.src}`);
+                // Crear elemento con error
+                const item = createGalleryItem(imageData, 'horizontal');
+                resolve({ item, index });
+            };
+        });
+    });
+    
+    // Agregar elementos a la galería inmediatamente
+    const results = await Promise.all(galleryItems);
+    results.forEach(result => {
+        if (result && result.item) {
+            gallery.appendChild(result.item);
+        }
+    });
 }
 
-.header {
-    text-align: center;
-    margin-bottom: 40px;
-    color: white;
+// Función para filtrar imágenes
+function filterImages(filter) {
+    currentFilter = filter;
+    const items = gallery.querySelectorAll('.gallery-item');
+    
+    items.forEach(item => {
+        if (filter === 'all' || item.dataset.orientation === filter) {
+            item.style.display = 'block';
+            item.style.opacity = '1';
+        } else {
+            item.style.display = 'none';
+            item.style.opacity = '0';
+        }
+    });
+    
+    // Actualizar botones activos
+    filterBtns.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === filter) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Reorganizar el layout después del filtrado
+    setTimeout(() => {
+        // Forzar un reflow para que el layout se reorganice
+        gallery.style.display = 'none';
+        gallery.offsetHeight; // Trigger reflow
+        gallery.style.display = 'block';
+    }, 300);
 }
 
-.header h1 {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+// Función para abrir el modal
+function openModal(src, alt) {
+    modalImage.src = src;
+    modalImage.alt = alt;
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    // Cerrar menú de descarga si está abierto
+    closeDownloadMenu();
+    
+    // Encontrar el índice de la imagen actual
+    const visibleItems = Array.from(gallery.querySelectorAll('.gallery-item'))
+        .filter(item => item.style.display !== 'none');
+    const clickedItem = Array.from(visibleItems)
+        .find(item => item.querySelector('img').src === src);
+    currentImageIndex = visibleItems.indexOf(clickedItem);
+    
+    updateNavigationButtons();
 }
 
-.header p {
-    font-size: 1.1rem;
-    opacity: 0.9;
+// Función para alternar el menú de descarga
+function toggleDownloadMenu() {
+    downloadContainer.classList.toggle('active');
 }
 
-/* Hero Slider Styles */
-.hero-slider {
-    margin: 40px 0;
-    position: relative;
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+// Función para cerrar el menú de descarga
+function closeDownloadMenu() {
+    downloadContainer.classList.remove('active');
 }
 
-.slider-container {
-    position: relative;
-    width: 100%;
-    height: 400px;
-    overflow: hidden;
+// Función para obtener la imagen original
+function getOriginalImageSrc(currentSrc) {
+    const imageData = galleryConfig.images.find(img => img.src === currentSrc);
+    return imageData ? imageData.originalSrc : currentSrc;
 }
 
-.slider-track {
-    display: flex;
-    transition: transform 0.5s ease-in-out;
-    height: 100%;
-}
-
-.slider-slide {
-    min-width: 100%;
-    position: relative;
-    overflow: hidden;
-}
-
-.slider-slide img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.slider-slide:hover img {
-    transform: scale(1.05);
-}
-
-.slider-slide::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7));
-    z-index: 1;
-}
-
-.slider-content {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 30px;
-    color: white;
-    z-index: 2;
-}
-
-.slider-content h3 {
-    font-size: 1.8rem;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-}
-
-.slider-content p {
-    font-size: 1.1rem;
-    opacity: 0.9;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-}
-
-.slider-controls {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    z-index: 3;
-}
-
-.slider-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.slider-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
-}
-
-.slider-dots {
-    display: flex;
-    gap: 8px;
-}
-
-.slider-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.4);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.slider-dot.active {
-    background: white;
-    transform: scale(1.2);
-}
-
-.slider-dot:hover {
-    background: rgba(255, 255, 255, 0.8);
-}
-
-/* Animación de fade para las transiciones */
-@keyframes slideFade {
-    from {
-        opacity: 0;
-        transform: scale(1.1);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-.slider-slide.active {
-    animation: slideFade 0.5s ease forwards;
-}
-
-.gallery-controls {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    margin-bottom: 30px;
-    flex-wrap: wrap;
-}
-
-.filter-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 12px 24px;
-    border-radius: 25px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 1rem;
-    backdrop-filter: blur(10px);
-}
-
-.filter-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.filter-btn.active {
-    background: rgba(255, 255, 255, 0.4);
-    border-color: rgba(255, 255, 255, 0.8);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.gallery {
-    columns: 4;
-    column-gap: 20px;
-    padding: 20px 0;
-}
-
-@media (max-width: 1200px) {
-    .gallery {
-        columns: 3;
-    }
-}
-
-@media (max-width: 900px) {
-    .gallery {
-        columns: 2;
-        column-gap: 15px;
-    }
-}
-
-@media (max-width: 600px) {
-    .gallery {
-        columns: 1;
-        column-gap: 10px;
-    }
-}
-
-.gallery-item {
-    position: relative;
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    transition: all 0.3s ease;
-    cursor: pointer;
-    background: white;
-    break-inside: avoid;
-    margin-bottom: 20px;
-    display: block;
-}
-
-.gallery-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.25);
-}
-
-.gallery-item img {
-    width: 100%;
-    height: auto;
-    display: block;
-    transition: transform 0.3s ease;
-}
-
-.gallery-item:hover img {
-    transform: scale(1.02);
-}
-
-/* Estilos específicos para diferentes orientaciones */
-
-/* Preloader individual para cada imagen */
-.image-loader {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    color: white;
-    font-size: 0.9rem;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top: 3px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.gallery-item.loading {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.gallery-item.loading img {
-    opacity: 0;
-}
-
-.gallery-item img {
-    width: 100%;
-    height: auto;
-    display: block;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-/* Contenedor de descarga en el modal */
-.download-container {
-    position: absolute;
-    top: 20px;
-    left: 30px;
-    z-index: 1001;
-}
-
-/* Botón de descarga en el modal */
-.download-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 25px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.download-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.download-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.download-btn:disabled:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: none;
-    box-shadow: none;
-}
-
-.download-btn i {
-    font-size: 14px;
-}
-
-#download-arrow {
-    transition: transform 0.3s ease;
-}
-
-.download-container.active #download-arrow {
-    transform: rotate(180deg);
-}
-
-/* Opciones de descarga */
-.download-options {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 8px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 15px;
-    padding: 8px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px);
-    transition: all 0.3s ease;
-    min-width: 150px;
-}
-
-.download-container.active .download-options {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.download-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 12px 16px;
-    border: none;
-    background: transparent;
-    color: #333;
-    cursor: pointer;
-    border-radius: 10px;
-    transition: all 0.3s ease;
-    font-size: 14px;
-    text-align: left;
-}
-
-.download-option:hover {
-    background: rgba(102, 126, 234, 0.1);
-    color: #667eea;
-}
-
-.download-option:first-child {
-    margin-bottom: 4px;
-}
-
-.download-option i {
-    font-size: 12px;
-    width: 16px;
-    text-align: center;
-}
-
-/* Ajustes responsivos para el diseño Pinterest */
-@media (max-width: 900px) {
-    .gallery-item {
-        margin-bottom: 15px;
-        border-radius: 12px;
+// Función para descargar imagen
+function downloadImage(src, alt, quality = 'original') {
+    // Cerrar el menú de descarga
+    closeDownloadMenu();
+    
+    // Mostrar mensaje de descarga
+    const downloadBtn = document.getElementById('download-btn');
+    const originalText = downloadBtn.innerHTML;
+    downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Descargando...';
+    downloadBtn.disabled = true;
+    
+    const link = document.createElement('a');
+    link.download = alt.replace(/\s+/g, '_') + '.jpg';
+    link.target = '_blank';
+    
+    if (quality === 'standard') {
+        // Descarga estándar (directa de la imagen actual)
+        link.href = src;
+        link.click();
+        // Restaurar el botón después de un breve delay
+        setTimeout(() => {
+            downloadBtn.innerHTML = originalText;
+            downloadBtn.disabled = false;
+        }, 500);
+    } else {
+        // Descarga original (usando URL original o imagen en alta calidad)
+        const originalSrc = getOriginalImageSrc(src);
+        
+        // Si la URL original es diferente, usar descarga directa
+        if (originalSrc !== src) {
+            link.href = originalSrc;
+            link.click();
+            setTimeout(() => {
+                downloadBtn.innerHTML = originalText;
+                downloadBtn.disabled = false;
+            }, 500);
+        } else {
+            // Si no hay URL original, usar canvas para alta calidad
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                
+                ctx.drawImage(img, 0, 0);
+                
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    link.href = url;
+                    link.click();
+                    
+                    // Limpiar el URL después de la descarga
+                    setTimeout(() => {
+                        URL.revokeObjectURL(url);
+                        // Restaurar el botón
+                        downloadBtn.innerHTML = originalText;
+                        downloadBtn.disabled = false;
+                    }, 100);
+                }, 'image/jpeg', 0.95);
+            };
+            
+            img.onerror = function() {
+                // Si hay error con CORS, intentar descarga directa
+                link.href = src;
+                link.click();
+                // Restaurar el botón
+                downloadBtn.innerHTML = originalText;
+                downloadBtn.disabled = false;
+            };
+            
+            img.src = src;
+        }
     }
 }
 
-@media (max-width: 600px) {
-    .gallery-item {
-        margin-bottom: 10px;
-        border-radius: 10px;
-    }
+// Función para cerrar el modal
+function closeModal() {
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    closeDownloadMenu();
 }
 
-.gallery-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.7));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: 1;
-}
-
-.gallery-item:hover::before {
-    opacity: 1;
-}
-
-.gallery-item .overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 20px;
-    color: white;
-    z-index: 2;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-}
-
-.gallery-item:hover .overlay {
-    transform: translateY(0);
-}
-
-/* Modal styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.9);
-    backdrop-filter: blur(5px);
-}
-
-.modal-content {
-    position: relative;
-    margin: auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-    max-width: 90vw;
-    max-height: 90vh;
-}
-
-.modal-image {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    border-radius: 10px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-}
-
-.close {
-    position: absolute;
-    top: 20px;
-    right: 30px;
-    color: white;
-    font-size: 40px;
-    font-weight: bold;
-    cursor: pointer;
-    z-index: 1001;
-    transition: color 0.3s ease;
-}
-
-.close:hover {
-    color: #ff6b6b;
-}
-
-.modal-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 20px;
-    pointer-events: none;
-}
-
-.nav-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: white;
-    padding: 15px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 20px;
-    transition: all 0.3s ease;
-    pointer-events: all;
-    backdrop-filter: blur(10px);
-}
-
-.nav-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .container {
-        padding: 10px;
+// Función para navegar entre imágenes
+function navigateImage(direction) {
+    const visibleItems = Array.from(gallery.querySelectorAll('.gallery-item'))
+        .filter(item => item.style.display !== 'none');
+    
+    if (direction === 'next') {
+        currentImageIndex = (currentImageIndex + 1) % visibleItems.length;
+    } else {
+        currentImageIndex = currentImageIndex === 0 ? visibleItems.length - 1 : currentImageIndex - 1;
     }
     
-    .header h1 {
-        font-size: 2rem;
-    }
+    const targetItem = visibleItems[currentImageIndex];
+    const targetImg = targetItem.querySelector('img');
     
-    .slider-container {
-        height: 300px;
-    }
+    modalImage.src = targetImg.src;
+    modalImage.alt = targetImg.alt;
     
-    .slider-content h3 {
-        font-size: 1.4rem;
-    }
+    // Cerrar menú de descarga al navegar
+    closeDownloadMenu();
     
-    .slider-content p {
-        font-size: 1rem;
-    }
-    
-    .slider-controls {
-        bottom: 15px;
-        gap: 15px;
-    }
-    
-    .slider-btn {
-        width: 35px;
-        height: 35px;
-    }
-    
-    .filter-btn {
-        padding: 10px 20px;
-        font-size: 0.9rem;
-    }
-    
-    .modal-nav {
-        padding: 0 10px;
-    }
-    
-    .nav-btn {
-        padding: 12px;
-        font-size: 16px;
-    }
-    
-    .download-container {
-        top: 15px;
-        left: 20px;
-    }
-    
-    .download-btn {
-        padding: 10px 16px;
-        font-size: 14px;
-    }
-    
-    .download-options {
-        min-width: 130px;
-    }
+    updateNavigationButtons();
 }
 
-@media (max-width: 480px) {
-    .slider-container {
-        height: 250px;
-    }
+// Función para actualizar botones de navegación
+function updateNavigationButtons() {
+    const visibleItems = Array.from(gallery.querySelectorAll('.gallery-item'))
+        .filter(item => item.style.display !== 'none');
     
-    .slider-content {
-        padding: 20px;
-    }
-    
-    .slider-content h3 {
-        font-size: 1.2rem;
-    }
-    
-    .slider-content p {
-        font-size: 0.9rem;
-    }
-    
-    .slider-controls {
-        bottom: 10px;
-        gap: 10px;
-    }
-    
-    .slider-btn {
-        width: 30px;
-        height: 30px;
-        font-size: 12px;
-    }
-    
-    .slider-dot {
-        width: 10px;
-        height: 10px;
-    }
-    
-    .gallery-controls {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .filter-btn {
-        width: 200px;
-    }
+    prevBtn.style.display = visibleItems.length > 1 ? 'block' : 'none';
+    nextBtn.style.display = visibleItems.length > 1 ? 'block' : 'none';
 }
 
-/* Animaciones */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    loadGallery();
+    initSlider();
+    
+    // Event listeners para filtros
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterImages(btn.dataset.filter);
+        });
+    });
+    
+    // Event listeners para el modal
+    closeBtn.addEventListener('click', closeModal);
+    prevBtn.addEventListener('click', () => navigateImage('prev'));
+    nextBtn.addEventListener('click', () => navigateImage('next'));
+    
+    // Event listeners para el menú de descarga
+    downloadBtn.addEventListener('click', toggleDownloadMenu);
+    
+    // Event listeners para las opciones de descarga
+    document.querySelectorAll('.download-option').forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const quality = option.dataset.quality;
+            downloadImage(modalImage.src, modalImage.alt, quality);
+        });
+    });
+    
+    // Event listeners para el slider
+    prevSliderBtn.addEventListener('click', () => {
+        prevSlide();
+        resetAutoSlide();
+    });
+    
+    nextSliderBtn.addEventListener('click', () => {
+        nextSlide();
+        resetAutoSlide();
+    });
+    
+    // Pausar auto-slide al hacer hover
+    const heroSlider = document.querySelector('.hero-slider');
+    heroSlider.addEventListener('mouseenter', stopAutoSlide);
+    heroSlider.addEventListener('mouseleave', startAutoSlide);
+    
+    // Cerrar modal con Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'block') {
+            closeModal();
+        }
+    });
+    
+    // Navegación con flechas
+    document.addEventListener('keydown', (e) => {
+        if (modal.style.display === 'block') {
+            if (e.key === 'ArrowLeft') {
+                navigateImage('prev');
+            } else if (e.key === 'ArrowRight') {
+                navigateImage('next');
+            }
+        }
+    });
+    
+    // Cerrar modal al hacer clic fuera de la imagen
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+    
+    // Cerrar menú de descarga al hacer clic fuera
+    document.addEventListener('click', (e) => {
+        if (!downloadContainer.contains(e.target)) {
+            closeDownloadMenu();
+        }
+    });
+});
+
+// Funciones del slider
+function initSlider() {
+    // Seleccionar solo las mejores 3 imágenes para el slider (destacadas)
+    const featuredImages = [
+        galleryConfig.images[1],  // Primera imagen
+        galleryConfig.images[3],  // Quinta imagen
+        galleryConfig.images[5]   // Novena imagen
+    ];
+    sliderImages = featuredImages;
+    
+    // Crear slides
+    sliderImages.forEach((imageData, index) => {
+        const slide = document.createElement('div');
+        slide.className = 'slider-slide';
+        slide.dataset.index = index;
+        
+        const img = document.createElement('img');
+        img.src = imageData.src;
+        img.alt = imageData.alt;
+        
+        const content = document.createElement('div');
+        content.className = 'slider-content';
+        content.innerHTML = `
+            <h3>${imageData.alt}</h3>
+            <p>Fotografía Destacada ${index + 1} de ${sliderImages.length}</p>
+        `;
+        
+        slide.appendChild(img);
+        slide.appendChild(content);
+        sliderTrack.appendChild(slide);
+        
+        // Crear punto indicador
+        const dot = document.createElement('div');
+        dot.className = 'slider-dot';
+        dot.dataset.index = index;
+        dot.addEventListener('click', () => goToSlide(index));
+        sliderDots.appendChild(dot);
+    });
+    
+    // Mostrar el primer slide
+    updateSlider();
+    startAutoSlide();
 }
 
-@keyframes slideInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+function updateSlider() {
+    // Actualizar posición del track
+    sliderTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
+    
+    // Actualizar puntos activos
+    const dots = sliderDots.querySelectorAll('.slider-dot');
+    dots.forEach((dot, index) => {
+        dot.classList.toggle('active', index === currentSlide);
+    });
+    
+    // Actualizar slides activos
+    const slides = sliderTrack.querySelectorAll('.slider-slide');
+    slides.forEach((slide, index) => {
+        slide.classList.toggle('active', index === currentSlide);
+    });
 }
 
-.gallery-item {
-    animation: slideInUp 0.6s ease forwards;
-    opacity: 0;
+function nextSlide() {
+    currentSlide = (currentSlide + 1) % sliderImages.length;
+    updateSlider();
 }
 
-.gallery-item:nth-child(1) { animation-delay: 0.1s; }
-.gallery-item:nth-child(2) { animation-delay: 0.2s; }
-.gallery-item:nth-child(3) { animation-delay: 0.3s; }
-.gallery-item:nth-child(4) { animation-delay: 0.4s; }
-.gallery-item:nth-child(5) { animation-delay: 0.5s; }
-.gallery-item:nth-child(6) { animation-delay: 0.6s; }
-.gallery-item:nth-child(7) { animation-delay: 0.7s; }
-.gallery-item:nth-child(8) { animation-delay: 0.8s; }
-.gallery-item:nth-child(9) { animation-delay: 0.9s; }
-.gallery-item:nth-child(10) { animation-delay: 1.0s; }
-.gallery-item:nth-child(11) { animation-delay: 1.1s; }
-.gallery-item:nth-child(12) { animation-delay: 1.2s; }
-.gallery-item:nth-child(13) { animation-delay: 1.3s; }
-
-/* Mejoras para el diseño Pinterest */
-.gallery-item::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to bottom, transparent 80%, rgba(0,0,0,0.1));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
+function prevSlide() {
+    currentSlide = currentSlide === 0 ? sliderImages.length - 1 : currentSlide - 1;
+    updateSlider();
 }
 
-.gallery-item:hover::after {
-    opacity: 1;
+function goToSlide(index) {
+    currentSlide = index;
+    updateSlider();
+    resetAutoSlide();
 }
+
+function startAutoSlide() {
+    slideInterval = setInterval(nextSlide, 4000); // Cambiar cada 4 segundos
+}
+
+function stopAutoSlide() {
+    clearInterval(slideInterval);
+}
+
+function resetAutoSlide() {
+    stopAutoSlide();
+    startAutoSlide();
+}
+
+// Función para precargar imágenes (opcional, para mejor rendimiento)
+function preloadImages() {
+    galleryConfig.images.forEach(imageData => {
+        const img = new Image();
+        img.src = imageData.src;
+    });
+}
+
+// Precargar imágenes cuando la página esté lista
+window.addEventListener('load', preloadImages);

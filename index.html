@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Picture.Fotography</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="assets/fav.jpg">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="container">
         <header class="header">
             <h1><i class="fas fa-camera"></i> Picture.Fotography</h1>
-            <p>Disfruta de mis mejores momentos capturados</p>
+            <p><strong>Bienvenido/a</strong>. Aquí se reúnen momentos únicos, capturados con intención y sensibilidad.</p>
         </header>
 
         <!-- Slider automático -->
@@ -55,6 +56,23 @@
     <div class="modal" id="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
+            <div class="download-container" id="download-container">
+                <button class="download-btn" id="download-btn">
+                    <i class="fas fa-download"></i>
+                    Descargar
+                    <i class="fas fa-chevron-down" id="download-arrow"></i>
+                </button>
+                <div class="download-options" id="download-options">
+                    <button class="download-option" data-quality="standard">
+                        <i class="fas fa-image"></i>
+                        Estándar
+                    </button>
+                    <button class="download-option" data-quality="original">
+                        <i class="fas fa-star"></i>
+                        Original
+                    </button>
+                </div>
+            </div>
             <img class="modal-image" id="modal-image" src="" alt="">
             <div class="modal-nav">
                 <button class="nav-btn prev" id="prev-btn">
